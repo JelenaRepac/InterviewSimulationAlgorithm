@@ -1,0 +1,77 @@
+#data manipulation library
+import pandas as pd
+from ordered_set import OrderedSet
+
+#Citanje iz fajla
+delegates = pd.read_csv('delegatesVruca.csv')
+companies = pd.read_csv('companiesVruca.csv')
+
+# pravimo dictionary(key:value structure)
+# OrderSet je uveden jer set() kao struktura svaki put prilikom pokretanja programa izgeneriše različiti raspored dodeljenih kompanija
+assignments = {delegate: OrderedSet() for delegate  in delegates['Delegate']}
+
+
+# Prolazak kroz preferencije
+for preference in range(1, 5):
+    # Prolazak kroz sve delegate
+    for delegate in delegates.itertuples():
+        # Provera da li je delegat vec rasporedjen kod 3 kompanije
+        if len(assignments[delegate.Delegate]) < 4:
+            company = delegate[preference]
+            # Provera da li kompanija idalje ima slobodnih mesta (maks 25)
+            # loc funkcija - selektuje podatke iz data frame-a na osvnovu labela
+            # values - konvertuje kolonu u numpy array 
+            # prvo pronalazi red, a zatim proverava da li ima preostalih mesta
+            if len(companies.loc[companies['Company'] == company, 'Slots'].values) > 0 and companies.loc[companies['Company'] == company, 'Slots'].values[0] > 0:
+                if company not in assignments[delegate.Delegate]:
+                    # dodeljujemo delegata kompaniji
+                    assignments[delegate.Delegate].add(company)
+                    # smanjuje se preostali broj slobodnih mesta
+                    companies.loc[companies['Company'] == company, 'Slots'] -= 1
+                else:
+                    continue
+            # Ukoliko se desi da delegatu prva preferencija nema slobodnih mesta, prelazi se na njegovu drugu preferenciju i proverava se isto za nju
+            else:
+                secondCompany=delegate[preference+1] if preference < 5 else None
+
+                if secondCompany  and len(companies.loc[companies['Company'] == secondCompany, 'Slots'].values) > 0 and companies.loc[companies['Company'] == secondCompany, 'Slots'].values[0] > 0:
+                    if secondCompany not in assignments[delegate.Delegate]:
+                        # dodeljujemo delegata kompaniji
+                        assignments[delegate.Delegate].add(secondCompany)
+                        # smanjuje se preostali broj slobodnih mesta
+                        companies.loc[companies['Company'] == secondCompany, 'Slots'] -= 1
+                    else:
+                        continue
+                else:
+                    continue
+
+
+# Ispis
+for delegate, companies in assignments.items():
+    print(f"{delegate}:  {', '.join(companies)}")
+
+# Za listu u odnosu na kompaniju
+company_assignments = {}
+for delegate, companies in assignments.items():
+    for company in companies:
+        if company not in company_assignments:
+            company_assignments[company] = [delegate]
+        else:
+            company_assignments[company].append(delegate)
+
+# Ispis KOMPANIJA : delegati koji su rasporedjeni kod te kompanije
+for company, delegates in company_assignments.items():
+    print(f"{company}: {', '.join(delegates)}\n")
+
+
+
+# U zavisnosti od broja kompanija/delegata 
+# može da se desi da za neke delegate 'ne ostane' nijedna kompanija 
+#  -> u tom slučaju da ih dodelimo kod prve dve preferencije ?
+#  -> mora da se pazi na broj delegata koje ce jedna kompanija imatu
+
+# Kada se čita iz excel file-a treba voditi računa o razmaku !!! Korišćena biblioteka ga prepoznaje kao element 
+
+# Forma za prijavu treba da bude drugačije odrađena 
+#   -> Prošlogodišnja forma je kao mogućnost dala čekiranje 5 kompanija - u excel-u će uvek biti isti redosled //Ukoliko se izabere Delta će kod svakog biti na prvom mestu
+#   -> Preferencije - Da se npr ispiše tačan redosled kod kojih kompanije žele (short text)
