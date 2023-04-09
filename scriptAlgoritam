@@ -50,6 +50,10 @@ for preference in range(1, 5):
 for delegate, companies in assignments.items():
     print(f"{delegate}:  {', '.join(companies)}")
 
+results=pd.DataFrame.from_dict(assignments, orient='index', columns=['Company 1', 'Company 2', 'Company 3'])
+results.index.name = 'Delegate'
+results.to_csv('results.csv')
+
 # Za listu u odnosu na kompaniju
 company_assignments = {}
 for delegate, companies in assignments.items():
